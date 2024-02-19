@@ -31,7 +31,7 @@ Spotify является мировым лидером в области муз�
 | Индия          |                3.77%              |
 | Канада         |                3.41%              |
 
-[simularweb](https://www.similarweb.com/ru/website/spotify.com/#demographics)
+[source](https://www.businessofapps.com/data/spotify-statistics/)
 
 | Пол       | Процентное соотношение  |
 |-----------|:-----------------------:|
