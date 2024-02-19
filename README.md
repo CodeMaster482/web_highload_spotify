@@ -17,7 +17,7 @@
 Spotify является мировым лидером в области музыкального стриминга и имеет на 4 квартал 2023-его года 30.5% от общей доли продаваемых подписок, что составляет 266 млн. пользователей
 
 - 618 милиона [**MAU**](https://s29.q4cdn.com/175625835/files/doc_financials/2023/q4/Shareholder-Deck-Q4-2023-FINAL.pdf) на Февраль 6, 2024
-- 20.6 миллионов [**DAU**](https://s29.q4cdn.com/175625835/files/doc_financials/2023/q4/Shareholder-Deck-Q4-2023-FINAL.pdf) на Февраль 6, 2024
+- 271.92 миллионов [**DAU**](https://s29.q4cdn.com/175625835/files/doc_financials/2023/q4/Shareholder-Deck-Q4-2023-FINAL.pdf) на Февраль 6, 2024
 - На возрастную группу 18-35 года приходится [55%](https://www.businessofapps.com/data/spotify-statistics/) всех пользователей сервисов потоковой музыки
 
 [hypestat](https://hypestat.com/info/spotify.com)
