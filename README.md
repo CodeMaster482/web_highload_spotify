@@ -214,6 +214,190 @@ DAU * n_pl-day / day = (272 * 10^6) * 10 / (24 * 3600) = 31481 RPS
 DAU * n_search / day = (272 * 10^6) * 3 / (24 * 3600) = 9444 RPS
 ```
 
+## 3. Глобальная балансировка нагрузки
+### Нахождение ЦОДов
+![stats](image.png)
+
+```Eu = 210 120 000```
+
+```Na = 148 320 000```
+
+```Sa = 135 960 000```
+
+```India = 23 mil```
+
+- Самый большой трафик идёт из Европы и Северной Америки, там будет находится дата-центр в Европе, чтобы обеспечить основные страны.
+- В США и Бразилии будет расположен 3 и 4-ый дата-центр для обеспечения Северную и Южную Америку.
+
+
+![map](map.png)
+
+
+- Нью-Йорк (США)
+- Сан-Франциско (США)
+- Франкфурт (Германия)
+- Лондон (Великобритания)
+- Стокгольм (Швеция)
+- Москва (Россия)
+- Бразилиа (Бразилия)
+- Мехико (Мексика)
+- Токио (Япония)
+- Дели (Индия)
+- Сидней (Австралия)
+
+
+### DNS балансировка
+- Будет использовать Latency-based DNS, в результате чего пользователю будет подбираться ближайший дата-центр, будем использовать эту технологию для глобальной балансировки.
+### BGP Anycast
+- Внутри регионов будем использовать BGP Anycast (будем выдавать один ip для нескольких дата-центров, отправлять пользователя к ближайшему дата-центру, cdn серверу)
+- Будем использовать CDN сервера для отдачи статики (музыка). Для этого будем кэшировать треки в дата-центрах и дальше рассылать по cdn серверам, также будем предоставлять провайдерам кэши для ускорения контента(ISP), чтобы снять нагрузку с cdn серверов.
+- Кеш сервер будет работать так, отдавать пользователю контент и в моменты минимальной нагрузки загружать с cdn серверов новый контент.
+
+
+## 4. Локальная балансировка нагрузки
+### BGP/RIP балансировка
+- В ДЦ будет стоять маршрутизатор, с помощью BGP маршрутизации будет распределять данные на балансировщик L3.
+### L7 балансировщик
+- Будем использовать Envoy, как более современное решение чем nginx. Будет кешировать некоторые запросы, решать проблему "медленного клиента". С помощью Weighted Least Connections будем распределять запросы на сервисы (поднятые в подах kubernetes).
+- Проблему отказоустойчивости в рамках сервисов, будет решать kubernetes. Для балансировщиков будем использовать heartbeat linux.
+### SSL termination:
+- Будем использовать SSL Termination, чтобы снять нагрузку с серверов по расшифровке ssl, это будет делать L7 балансировщик.
+- Session cache - будет кешировать сессию.
+
+## 5. Логическая схема БД
+
+```mermaid
+---
+title: Схема бд
+---
+erDiagram
+    user_auth {
+        id uuid PK
+        email text
+        password bytes
+        client_id uuid FK
+    }
+
+    user_session {
+        id uuid
+        client_id uuid FK
+        session_id uuid
+    }
+
+    user_client {
+        id uuid PK
+        username text
+        subscription timestamptz
+        avatar_path text
+    }
+
+    track {
+        id uuid PK
+        author_id uuid FK
+        title text
+        release_at timestamptz
+        lyrics text
+        stream_url text
+        created_at timestamptz
+        update_at timestamptz
+    }
+
+    track_tag {
+        track_id uuid PK
+        title text
+    }
+
+    track_statistics {
+        track_id uuid FK
+        listening_count int
+    }
+
+    playlist_track {
+        id uuid
+        track_id uuid FK
+        playlist_id uuid FK
+    }
+
+    playlist {
+        id uuid PK
+        user_id uuid FK
+        title text
+        image_url text
+        created_at timestamptz
+        updated_at timestamptz
+    }
+
+    album_track {
+        id uuid
+        track_id uuid FK
+        album_id uuid FK
+    }
+
+    album {
+        id uuid PK
+        author uuid FK
+        title text
+        description text
+        image_url text
+        created_at timestamptz
+        update_at timestamptz
+    }
+
+    author {
+        id uuid PK
+        name text
+        birth_date timestamptz
+    }
+
+    recomendation_playlist {
+        id uuid PK
+        playlist_id uuid FK
+        simular[] uuid FK
+    }
+
+    user_auth ||--o{ user_client : has
+    user_session ||--o{ user_client : has
+    user_client ||--o{ playlist : has
+    playlist ||--o{ playlist_track : has
+    playlist_track }o--|| track : has
+    track ||--|| track_statistics : has
+    album ||--o{ album_track : has
+    track ||--o{ album_track : has
+    author ||--o{ album : has
+    track }o--|| author : has
+    recomendation_playlist ||--|| playlist : has
+    playlist ||--o{ recomendation_playlist : has
+    track_tag }o--|| track : has
+```
+
+## 6. Физическая схема БД
+
+### Выбор хранилища данных:
+- Для сессий воспользуемся redis(user_id, client_id, session_id string), хранилище in-memory и не сильно важно целостность данных, небольшая нагрузка `session`.
+- Для хранения и стриминга аудиофайлов объёмом около 1500 ТБ, использовать облачное хранилище, дает гибкую масштабируемость, позволяет оптимизировать затраты на хранение и уменьшить затраты на обслуживание оборудования.
+Из облачных сервисов **Amazon S3**, высокая доступность и надежность хранения, а также возможности для стриминга аудиофайлов с использованием CDN.
+- Для основной БД отлично подойдет NoSQL СУБД - Cassandra. Децентрализованная, отказоустойчивая и надёжная база данных "ключ-значение". Решает проблемы наличия единой точки отказа, отказа серверов и о распределении данных между узлами кластера.
+
+### Индексы
+- В таблице track:
+    - (track_id, created_at) B-tree
+    - (title) GIN  (поиск)
+- В таблице author:
+    - (author_id, name) B-tree
+    - (name) GIN  (поиск)
+- В таблице album:
+    - (album_id, created_at) B-tree
+    - (title) GIN  (поиск)
+- В таблице playlist:
+    - (playlist_id, created_at) B-tree
+    - (title) GIN  (поиск)
+
+### Шардинг
+Для оптимизации работы **по регионам** и **популярным** песням шардирование подойдет.
+
+### Репликация
+Для обеспечения высокой доступности сервиса будет использоваться модель 2 Slave - 1 Master.
+
 ## Источники
 
 [^1]: [Music subscriber market shares 2022](https://midiaresearch.com/blog/music-subscriber-market-shares-2022)
