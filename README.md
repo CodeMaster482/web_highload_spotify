@@ -1,9 +1,15 @@
 # Highload-Spotify
 
 ## Содержание
-* #### [Тема и целевая аудитория](#1)
-* #### [Рассчет нагрузки](#2)
-* #### [Источники](#3)
+* ### [Тема и целевая аудитория](#1)
+* ### [Рассчет нагрузки](#2)
+* ### [Рассчет нагрузки](#3)
+* ### [Рассчет нагрузки](#4)
+* ### [Рассчет нагрузки](#5)
+* ### [Рассчет нагрузки](#6)
+* ### [Рассчет нагрузки](#7)
+* ### [Рассчет нагрузки](#8)
+* ### [Источники](#9)
 
 ## Часть 1. Тема и целевая аудитория <a name="1"></a>
 
@@ -214,7 +220,7 @@ DAU * n_pl-day / day = (272 * 10^6) * 10 / (24 * 3600) = 31481 RPS
 DAU * n_search / day = (272 * 10^6) * 3 / (24 * 3600) = 9444 RPS
 ```
 
-## 3. Глобальная балансировка нагрузки
+## 3. Глобальная балансировка нагрузки <a name="3"></a>
 ### Нахождение ЦОДов
 ![stats](image.png)
 
@@ -254,7 +260,7 @@ DAU * n_search / day = (272 * 10^6) * 3 / (24 * 3600) = 9444 RPS
 - Кеш сервер будет работать так, отдавать пользователю контент и в моменты минимальной нагрузки загружать с cdn серверов новый контент.
 
 
-## 4. Локальная балансировка нагрузки
+## 4. Локальная балансировка нагрузки <a name="4"></a>
 ### BGP/RIP балансировка
 - В ДЦ будет стоять маршрутизатор, с помощью BGP маршрутизации будет распределять данные на балансировщик L7.
 ### L7 балансировщик
@@ -264,7 +270,7 @@ DAU * n_search / day = (272 * 10^6) * 3 / (24 * 3600) = 9444 RPS
 - Будем использовать SSL Termination, чтобы снять нагрузку с серверов по расшифровке ssl, это будет делать L7 балансировщик.
 - Session cache - будет кешировать сессию.
 
-## 5. Логическая схема БД
+## 5. Логическая схема БД <a name="5"></a>
 
 ```mermaid
 ---
@@ -327,18 +333,13 @@ erDiagram
         updated_at timestamptz
     }
 
-    album_track {
-        id uuid
-        track_id uuid FK
-        album_id uuid FK
-    }
-
     album {
         id uuid PK
         author uuid FK
         title text
         description text
         image_url text
+        tracks track[]
         created_at timestamptz
         update_at timestamptz
     }
@@ -352,7 +353,7 @@ erDiagram
     recomendation_playlist {
         id uuid PK
         playlist_id uuid FK
-        simular[] uuid FK
+        simular uuid[] FK
     }
 
     user_auth ||--o{ user_client : has
@@ -361,8 +362,6 @@ erDiagram
     playlist ||--o{ playlist_track : has
     playlist_track }o--|| track : has
     track ||--|| track_statistics : has
-    album ||--o{ album_track : has
-    track ||--o{ album_track : has
     author ||--o{ album : has
     track }o--|| author : has
     recomendation_playlist ||--|| playlist : has
@@ -370,7 +369,7 @@ erDiagram
     track_tag }o--|| track : has
 ```
 
-## 6. Физическая схема БД
+## 6. Физическая схема БД <a name="6"></a>
 
 ### Выбор хранилища данных:
 - Для сессий воспользуемся redis(user_id, client_id, session_id string), хранилище in-memory и не сильно важно целостность данных, небольшая нагрузка `session`.
@@ -381,7 +380,6 @@ erDiagram
 ### Индексы
 - В таблице track:
     - (track_id, created_at) B-tree
-    - (title) GIN  (поиск)
 - В таблице author:
     - (author_id, name) B-tree
     - (name) GIN  (поиск)
@@ -398,7 +396,7 @@ erDiagram
 ### Репликация
 Для обеспечения высокой доступности сервиса будет использоваться модель 2 Slave - 1 Master.
 
-## 7. Алгоритмы
+## 7. Алгоритмы <a name="7"></a>
 
 ### Рекомендации
 
@@ -416,7 +414,7 @@ HLS (HTTP Live Streaming) или DASH (Dynamic Adaptive Streaming over HTTP)
 ### Хранение треков
 Для хранения используются форматы Ogg/Vorbis (96, 160, 320 kbps), AAC (128, 256 kbps), and HE-AACv2 (24kbps) FLAC or WAV (1411 kbps, частота дискретизации 44 100 Гц и глубина 16 бит)
 
-# 8. Технологии
+# 8. Технологии <a name="8"></a>
 
 | Технология  | Область применения             | Обоснование                                                                                             |
 |-------------|--------------------------------|---------------------------------------------------------------------------------------------------------|
@@ -434,7 +432,7 @@ GitLab	| Система контроля версий, CI/CD	| Удобство 
 | Apache Storm | Recomendation | Real-time вычислени |
 | Scala | Data Processing | |
 
-![map](9f7amr2h.bmp)
+![rec-pipeline](9f7amr2h.bmp)
 
 ## Источники
 
