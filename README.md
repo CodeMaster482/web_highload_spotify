@@ -27,7 +27,7 @@
 - Создания плейстов (для пользователя)
 - Разбиение треков по жанрам
 - Рекомендации (на основе подписок и истории прослушивания)
-- Стриминг аудио в разном кчестве
+- Стриминг аудио в разном качестве
 - Статистика по исполнителю
     1. Количество прослушиваний по странам
     2. Количество подписчиков
@@ -313,29 +313,37 @@ title: Схема бд
 author: CodeMaster482
 ---
 erDiagram
-    user_auth {
-        id uuid PK
-        email text
-        password bytes
-        client_id uuid FK
-    }
-
     user_session {
-        id uuid
+        id uuid PK,UK
+        expires timestamp
+        ip inet
+        user_agent text
         client_id uuid FK
         session_id uuid
     }
 
-    user_client {
-        id uuid PK
+    user {
+        id uuid PK,UK
+        email text UK
         username text
+        password text
         subscription timestamptz
-        avatar_path text
+        avatar_url text
+        country varchar(2)
     }
 
-    track {
-        id uuid PK
+    user_history {
+        id uuid PK,UK
+        user_id uuid FK
+        playlist_id uuid FK
+        songs song[]
+        date_played timestamptz
+    }
+
+    song {
+        id uuid PK,UK
         author_id uuid FK
+        author_name text
         title text
         release_at timestamptz
         lyrics text
@@ -344,24 +352,29 @@ erDiagram
         update_at timestamptz
     }
 
-    track_tag {
-        track_id uuid PK
-        title text
+    song_tag {
+        song_id uuid PK,UK
+        name text
     }
 
-    track_statistics {
+    song_statistics {
         track_id uuid FK
         listening_count int
     }
 
-    playlist_track {
-        id uuid
-        track_id uuid FK
-        playlist_id uuid FK
+    song_stream {
+        song_id uuid FK
+        stream_24kbit  HE-AACv2
+        stream_96kbit  OggVorbis
+        stream_128kbit OggVorbis
+        stream_160kbit OggVorbis
+        stream_256kbit OggVorbis
+        stream_320kbit OggVorbis
+        stream_1411kbit FLAC
     }
 
     playlist {
-        id uuid PK
+        id uuid PK,UK
         user_id uuid FK
         title text
         image_url text
@@ -369,21 +382,10 @@ erDiagram
         updated_at timestamptz
     }
 
-    album {
-        id uuid PK
-        author uuid FK
-        title text
-        description text
-        image_url text
-        tracks track[]
-        created_at timestamptz
-        update_at timestamptz
-    }
-
-    author {
-        id uuid PK
-        name text
-        birth_date timestamptz
+    playlist_song {
+        id uuid PK,UK
+        song_id uuid FK
+        playlist_id uuid FK
     }
 
     recomendation_playlist {
@@ -392,17 +394,50 @@ erDiagram
         simular uuid[] FK
     }
 
-    user_auth ||--o{ user_client : has
-    user_session ||--o{ user_client : has
-    user_client ||--o{ playlist : has
-    playlist ||--o{ playlist_track : has
-    playlist_track }o--|| track : has
-    track ||--|| track_statistics : has
+    album {
+        id uuid PK,Uk
+        author uuid FK
+        title text
+        description text
+        image_url text
+        songs song[]
+        created_at timestamptz
+        update_at timestamptz
+    }
+
+    album_tag {
+        album_id uuid PK,UK
+        name text
+    }
+
+    author {
+        id uuid PK
+        name text
+        description text
+        listen_count int
+        birth_date timestamptz
+    }
+
+    author_tag {
+        author_id uuid PK,UK
+        name text
+    }
+
+    user_session ||--o{ user : has
+    user ||--o{ playlist : has
+    playlist ||--o{ playlist_song : has
+    playlist_song }o--|| song : has
+    song ||--|| song_statistics : has
     author ||--o{ album : has
-    track }o--|| author : has
+    song }o--|| author : has
     recomendation_playlist ||--|| playlist : has
     playlist ||--o{ recomendation_playlist : has
-    track_tag }o--|| track : has
+    song_tag }o--|| song : has
+    album_tag }o--|| album : has
+    author_tag }o--|| author : has
+    user_history }o--|| user : has
+    user_history }o--o{ playlist : has
+    song_stream ||--|| song : has
 ```
 
 ## 6. Физическая схема БД
@@ -419,20 +454,17 @@ erDiagram
 ### Индексы
 
 - В таблице track:
-    - (track_id, created_at) B-tree
+    - (track_id, created_at) Hash
 - В таблице author:
     - (author_id, name) B-tree
-    - (name) GIN  (поиск)
 - В таблице album:
     - (album_id, created_at) B-tree
-    - (title) GIN  (поиск)
 - В таблице playlist:
     - (playlist_id, created_at) B-tree
-    - (title) GIN  (поиск)
 
 ### Шардинг
 
-Для оптимизации работы **по регионам** и **популярным** песням шардирование подойдет.
+По хэшу поля id.
 
 ### Репликация
 
@@ -452,11 +484,11 @@ erDiagram
 
 ### Стриминг треков
 
-HLS (HTTP Live Streaming) или DASH (Dynamic Adaptive Streaming over HTTP)
+**HLS** (HTTP Live Streaming) или **DASH** (Dynamic Adaptive Streaming over HTTP)
 
 ### Хранение треков
 
-Для хранения используются форматы Ogg/Vorbis (96, 160, 320 kbps), AAC (128, 256 kbps), and HE-AACv2 (24kbps) FLAC or WAV (1411 kbps, частота дискретизации 44 100 Гц и глубина 16 бит)
+Для хранения используются форматы **Ogg Vorbis** (96, 160, 320 kbps), **AAC** (128, 256 kbps), and **HE-AACv2** (24kbps) **FLAC** or **WAV** (1411 kbps, частота дискретизации 44 100 Гц и глубина 16 бит)
 
 # 8. Технологии
 
