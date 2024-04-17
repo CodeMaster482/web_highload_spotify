@@ -518,6 +518,10 @@ GitLab	| Система контроля версий, CI/CD	| Удобство 
 
 ![rec-pipeline](9f7amr2h.bmp)
 
+[Актуальная схема](https://drive.google.com/file/d/1zhMn8_Igj0ZjtwY2olcLpzVfXxT5IkHn/view?usp=sharing)
+
+![Spotify-Scheme](image-1.png)
+
 ## Источники
 
 [^1]: [Music subscriber market shares 2022](https://midiaresearch.com/blog/music-subscriber-market-shares-2022)
