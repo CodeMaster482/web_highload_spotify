@@ -232,7 +232,7 @@ DAU * n_search_day / day = (272 * 10^6) * 5 / (24 * 3600) = 15740 RPS
 | Сервис                                      | RPS   |
 |---------------------------------------------|-------|
 | Авторизация                                 | 715   |
-| информация о своем плейлисте                | 15740
+| информация о своем плейлисте                | 15740 |
 | информация об конкретном альбоме, плейлисте | 9445  |
 | Добавление трека в плейлист                 | 9445  |
 | Создание плейлиста                          | 715   |
@@ -246,7 +246,13 @@ DAU * n_search_day / day = (272 * 10^6) * 5 / (24 * 3600) = 15740 RPS
 
 ### Нахождение ЦОДов
 
-![stats](image.png)
+| Регион        | % MAU |
+|---------------|-------|
+| Europe        |  34%  |
+| North America |  24%  |
+| Latin America |  22%  |
+| Rest Of World |  20%  |
+
 
 ```Eu = 210 120 000```
 
@@ -275,7 +281,7 @@ DAU * n_search_day / day = (272 * 10^6) * 5 / (24 * 3600) = 15740 RPS
 - Сидней (Австралия)
 
 
-### DNS балансировка
+### DNS Балансировка
 
 - Для глобальной балансировки будем использовать **Latency-based DNS**, в результате чего пользователю будет дата-центр с намименьшей задержкой.
 
@@ -327,16 +333,20 @@ erDiagram
         email text UK
         username text
         password text
+        gender text
         subscription timestamptz
         avatar_url text
         country varchar(2)
+        subscribed_to uuid[]
     }
 
     user_history {
         id uuid PK,UK
         user_id uuid FK
         playlist_id uuid FK
+        playlist_image_url text
         songs song[]
+        listned_time interval[]
         date_played timestamptz
     }
 
@@ -344,10 +354,13 @@ erDiagram
         id uuid PK,UK
         author_id uuid FK
         author_name text
+        album_id uuid FK
+        album_of_track album
         title text
         release_at timestamptz
+        duration interval
         lyrics text
-        stream_url text
+        stream_url stream
         created_at timestamptz
         update_at timestamptz
     }
@@ -358,18 +371,22 @@ erDiagram
     }
 
     song_statistics {
-        track_id uuid FK
-        listening_count int
+        song_id uuid FK
+        listen_count int
+        add_to_playlist_count int
+        shares_count int
+        skip_count int
+        avg_listen_time interval
     }
 
     song_stream {
-        song_id uuid FK
-        stream_24kbit  HE-AACv2
-        stream_96kbit  OggVorbis
-        stream_128kbit OggVorbis
-        stream_160kbit OggVorbis
-        stream_256kbit OggVorbis
-        stream_320kbit OggVorbis
+        song_id         uuid FK
+        stream_24kbit   HE-AACv2
+        stream_96kbit   OggVorbis
+        stream_128kbit  OggVorbis
+        stream_160kbit  OggVorbis
+        stream_256kbit  OggVorbis
+        stream_320kbit  OggVorbis
         stream_1411kbit FLAC
     }
 
@@ -378,6 +395,7 @@ erDiagram
         user_id uuid FK
         title text
         image_url text
+        duration interval
         created_at timestamptz
         updated_at timestamptz
     }
@@ -388,19 +406,21 @@ erDiagram
         playlist_id uuid FK
     }
 
-    recomendation_playlist {
+    recommendation_playlist {
         id uuid PK
         playlist_id uuid FK
         simular uuid[] FK
     }
 
     album {
-        id uuid PK,Uk
-        author uuid FK
+        id uuid PK,UK
+        author_id uuid FK
         title text
         description text
         image_url text
         songs song[]
+        duration interval
+        release_at timestamptz
         created_at timestamptz
         update_at timestamptz
     }
@@ -416,11 +436,26 @@ erDiagram
         description text
         listen_count int
         birth_date timestamptz
+        links srtring[]
     }
 
     author_tag {
         author_id uuid PK,UK
         name text
+    }
+
+    author_statistic {
+        author_id uuid PK,UK
+        listners_per_mounth int
+        avg_listeners_per_day int
+        in_playlists uuid[]
+    }
+
+    search {
+        song_name text
+        song_lyrics text
+        artist_name text
+        album_name text
     }
 
     user_session ||--o{ user : has
@@ -430,14 +465,15 @@ erDiagram
     song ||--|| song_statistics : has
     author ||--o{ album : has
     song }o--|| author : has
-    recomendation_playlist ||--|| playlist : has
-    playlist ||--o{ recomendation_playlist : has
+    recommendation_playlist ||--|| playlist : has
+    playlist ||--o{ recommendation_playlist : has
     song_tag }o--|| song : has
     album_tag }o--|| album : has
     author_tag }o--|| author : has
-    user_history }o--|| user : has
-    user_history }o--o{ playlist : has
+    user_history }o--|| user : have
+    user_history ||--o{ playlist : have
     song_stream ||--|| song : has
+    song ||--|| album : in
 ```
 
 ## 6. Физическая схема БД
@@ -446,29 +482,79 @@ erDiagram
 
 - Для сессий воспользуемся redis(user_id, client_id, session_id string), хранилище in-memory и не сильно важно целостность данных, небольшая нагрузка `session`.
 
-- Для хранения и стриминга аудиофайлов объёмом около 1500 ТБ, использовать облачное хранилище, дает гибкую масштабируемость, позволяет оптимизировать затраты на хранение и уменьшить затраты на обслуживание оборудования.
+- Для хранения и стриминга аудиофайлов объёмом около 2300 ТБ, использовать облачное хранилище, дает гибкую масштабируемость, позволяет оптимизировать затраты на хранение и уменьшить затраты на обслуживание оборудования.
 Из облачных сервисов **Amazon S3**, высокая доступность и надежность хранения, а также возможности для стриминга аудиофайлов с использованием CDN.
 
 - Для основной БД отлично подойдет NoSQL СУБД - Cassandra. Децентрализованная, отказоустойчивая и надёжная база данных "ключ-значение". Решает проблемы наличия единой точки отказа, отказа серверов и о распределении данных между узлами кластера.
 
+### Популярные запросы
+
+```sql
+SELECT * FROM user_history WHERE user_id=<user_id> ORDER BY date_played DESC LIMIT <limit>;
+
+SELECT * FROM playlist WHERE user_id=<user_id>;
+
+SELECT * FROM playlist_song WHERE playlist_id=<playlist_id>;
+
+SELECT * FROM user WHERE user_id=<user_id>;
+
+SELECT * FROM author WHERE author_id=<author_id>;
+
+SELECT * FROM album WHERE album_id=<album_id>;
+
+SELECT * FROM album WHERE author_id=<author_id> ORDER BY release_date;
+
+SELECT * FROM song WHERE song_id=<song_id>;
+
+SELECT simular FROM recomendation_playlist WHERE playlist_id=<playlist_id>;
+```
+
 ### Индексы
 
-- В таблице track:
-    - (track_id, created_at) Hash
-- В таблице author:
-    - (author_id, name) B-tree
-- В таблице album:
-    - (album_id, created_at) B-tree
-- В таблице playlist:
-    - (playlist_id, created_at) B-tree
+- user: 
+    - (user_id) hash
+- user-session:
+    - (session_id) Hash
+- song:
+    - (song_id) Hash
+- song_statistics:
+    - (song_id) Hash
+- playlist_song:
+    - (playlist_id, song_id) B-tree
+- playlist:
+    - (user_id) B-tree
+- author:
+    - (author_id) B-tree
+- album:
+    - (author_id, album_id) B-tree
+- user_history:
+    - (user_id, playlist_id, date_played) B-tree
 
 ### Шардинг
 
-По хэшу поля id.
+- song: 
+    - (song_id)
+- user:
+    - (user_id)
+- user_history
+    - (user_id)
+- playlist
+    - (user_id, playlist_id)
+- album 
+    - (artist_id, album_id)
+- artist
+    - (artist_id)
 
 ### Репликация
 
-Для обеспечения высокой доступности сервиса будет использоваться модель 2 Slave - 1 Master.
+- song: 
+    - 1 Master -  2 Slave
+- user:
+    - 1 Master -  2 Slave
+- playlist
+    - 1 Master -  2 Slave
+- album 
+    - 1 Master -  2 Slave
 
 ## 7. Алгоритмы
 
@@ -488,13 +574,23 @@ erDiagram
 
 ### Хранение треков
 
-Для хранения используются форматы **Ogg Vorbis** (96, 160, 320 kbps), **AAC** (128, 256 kbps), and **HE-AACv2** (24kbps) **FLAC** or **WAV** (1411 kbps, частота дискретизации 44 100 Гц и глубина 16 бит)
+Для хранения используются форматы :
+- **Ogg Vorbis** (96, 160, 320 kbps)
+- **AAC** (128, 256 kbps)
+- **HE-AACv2** (24kbps) 
+- **FLAC** или **WAV** (1411 kbps, частота дискретизации 44 100 Гц и глубина 16 бит)
 
 ### Поиск
 
 Для поиска буду использовать **ElasticSearch**, встроенный анализатор текста и полнотекстовй поиска **Apache Lucene**
 
-# 8. Технологии
+### Модерация
+
+- Загрузка музыки производится через дестрибьюторов и музыкальные лейблы. Они занимаются отсеиванием нежелательного контента на площадке
+
+- В качестве модерации будем использовать алгоритмы ML. Для нахождения, например, нецензурных фраз и навешивания тега ***"Explicit"***
+
+## 8. Технологии
 
 | Технология  | Область применения             | Обоснование                                                                                             |
 |-------------|--------------------------------|---------------------------------------------------------------------------------------------------------|
@@ -514,13 +610,43 @@ GitLab	| Система контроля версий, CI/CD	| Удобство 
 | ElasticSearch | Поиск | Полнотекстовый поиск. Встроенные анализаторы (в том числе китайский, корейский, японский)
 
 
-# 9. Схема проекта
+## 9. Схема проекта
 
 ![rec-pipeline](9f7amr2h.bmp)
 
 [Актуальная схема](https://drive.google.com/file/d/1zhMn8_Igj0ZjtwY2olcLpzVfXxT5IkHn/view?usp=sharing)
 
 ![Spotify-Scheme](image-1.png)
+
+## 10. Обеспечение надежности
+
+### Резервирование
+
+- Резеривруем ресурсы(**CPU**, **RAM**) сервера, диски и другое оборудование, которое взмет на себя нагрузку в случае сбоя основных компонентов системы
+
+- Резервирование ДатаЦентров: иметь несколько географически распределенных центров обработки данных, способных обслуживать систему в случае отказа основного ДатаЦентра
+
+- Резервирование БД - репликация: создание резервных копий данных и обеспечение доступа к данным в случае отказа основной БД + шардирование данных
+
+- Расчеты пикового трафика и размера хранения с запасом на определенный период
+
+     
+
+### Failover policy
+- Игнорирование. При отказе компонента показываем заглушку отсутствия сервиса
+- Уменьшение запросов на проблемный хост: недоступность сервиса, система уменьшает количество запросов на этот компонент, чтобы избежать возможной нагрузки и предотвратить негативное влияние на производительность системы.
+
+
+### Graceful shutdown
+- Дает системе время закрыть все активные соединения, завершить обработку текущих задач и спокойно освобождить ресурсы. Такой подход уменьшает фон ошибок.
+
+
+### Graceful degradation
+- Приложение будет продолжать корректно работать для пользователей, у которых отключены некоторые функциональные возможности или использовано устаревшее оборудование или программное обеспечение. Основные функции приложения работают всегда. Система не должна зависеть от 100% функций.
+
+### Observability
+- Логирование (Записанные логи могут использоваться для поиска и анализа ошибок, отладки работы приложения, сервисов)
+- Мониторинг (отслеживает состояние системы или приложения в реальном времени. Измерение производительности, использования ресурсов, наличия ошибок)
 
 ## Источники
 
