@@ -486,9 +486,27 @@ erDiagram
 
 - Для основной БД отлично подойдет NoSQL СУБД - Cassandra. Децентрализованная, отказоустойчивая и надёжная база данных "ключ-значение". Решает проблемы наличия единой точки отказа, отказа серверов и о распределении данных между узлами кластера.
 
+| Table                   | Database      |
+|-------------------------|---------------|
+| user_session            | Redis         |
+| user                    | Cassandra     |
+| user_history            | Cassandra     |
+| song                    | Cassandra     |
+| song_tag                | Cassandra     |
+| playlist                | Cassandra     |
+| playlist_song           | Cassandra     |
+| recommendation_playlist | Cassandra     |
+| album                   | Cassandra     |
+| album_tag               | Cassandra     |
+| song_stream             | S3            |
+| song_statistics         | Clickhouse    |
+| author_statistic        | Clickhouse    |
+| search                  | ElasticSearch |
+
 ### Популярные запросы
 
 ```sql
+
 SELECT * FROM user_history WHERE user_id=<user_id> ORDER BY date_played DESC LIMIT <limit>;
 
 SELECT * FROM playlist WHERE user_id=<user_id>;
@@ -505,29 +523,35 @@ SELECT * FROM album WHERE author_id=<author_id> ORDER BY release_date;
 
 SELECT * FROM song WHERE song_id=<song_id>;
 
+SELECT * FROM song WHERE author_id=<author_id>;
+
+SELECT * FROM song WHERE author_id=<author_id> AND <song_id> IN (song_ids...)
+
 SELECT simular FROM recomendation_playlist WHERE playlist_id=<playlist_id>;
+
 ```
 
 ### Индексы
 
 - user: 
-    - (user_id) hash
+    - (user_id)
 - user-session:
     - (session_id) Hash
 - song:
-    - (song_id) Hash
-- song_statistics:
-    - (song_id) Hash
+    - (song_id)
+    - (author_id) SAI
 - playlist_song:
-    - (playlist_id, song_id) B-tree
+    - (playlist_id)
 - playlist:
-    - (user_id) B-tree
+    - (user_id)
 - author:
-    - (author_id) B-tree
+    - (author_id)
 - album:
-    - (author_id, album_id) B-tree
+    - (author_id)
 - user_history:
-    - (user_id, playlist_id, date_played) B-tree
+    - (id)
+    - (playlist_id) SAI
+    - (date_played) SAI
 
 ### Шардинг
 
@@ -554,6 +578,15 @@ SELECT simular FROM recomendation_playlist WHERE playlist_id=<playlist_id>;
     - 1 Master -  2 Slave
 - album 
     - 1 Master -  2 Slave
+
+playlist (
+    id uuid PK
+    order
+    album_name
+    song_id
+    author_name
+    song_title
+)
 
 ## 7. Алгоритмы
 
