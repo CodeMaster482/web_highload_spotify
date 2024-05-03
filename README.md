@@ -359,7 +359,7 @@ erDiagram
         release_at timestamptz
         duration interval
         lyrics text
-        stream_url stream
+        stream_url_xbit text FK
         created_at timestamptz
         update_at timestamptz
     }
@@ -371,7 +371,7 @@ erDiagram
 
     song_statistics {
         song_id uuid FK
-        listen_count int
+        plays_count int
         add_to_playlist_count int
         shares_count int
         skip_count int
@@ -424,6 +424,13 @@ erDiagram
         update_at timestamptz
     }
 
+    album_statistic {
+        album_id uuid FK
+        plays_count int
+        likes_count int
+        shares_count int
+    }
+
     album_tag {
         album_id uuid PK,UK
         name text
@@ -433,7 +440,7 @@ erDiagram
         id uuid PK
         name text
         description text
-        listen_count int
+        plays int
         birth_date timestamptz
         links srtring[]
     }
@@ -468,7 +475,9 @@ erDiagram
     playlist ||--o{ recommendation_playlist : has
     song_tag }o--|| song : has
     album_tag }o--|| album : has
+    album_statistic ||--|| album : stats
     author_tag }o--|| author : has
+    author_statistic ||--||  author : stats
     user_history }o--|| user : have
     user_history ||--o{ playlist : have
     song_stream ||--|| song : has
@@ -508,6 +517,7 @@ erDiagram
 | song_stream             | S3            |
 | song_statistics         | Clickhouse    |
 | author_statistic        | Clickhouse    |
+| album_statistic         | Clickhouse    |
 | search                  | ElasticSearch |
 
 ### Популярные запросы
@@ -586,48 +596,41 @@ SELECT simular FROM recomendation_playlist WHERE playlist_id=<playlist_id>;
 - album 
     - 1 Master -  2 Slave
 
-playlist (
-    id uuid PK
-    order
-    album_name
-    song_id
-    author_name
-    song_title
-)
-
 ## 7. Алгоритмы
 
 ### Рекомендации
 
-Для алгоритмов создания и предложения треков по рекомендациям будем использовать ML-алгоритмы
+Для алгоритмов создания и предложения треков по рекомендациям будем использовать **ML**-алгоритмы
 - Совместная фильтрация
 - Алгоритм факторизации взвешенной матрицы
-- Анализ мел-спектрограммы треков (сверточную нейронную сеть CNN)
+- Анализ мел-спектрограммы треков (сверточную нейронную сеть **CNN**)
   Определяет тональность, лад, темп и громкость. 
   Когда обнаруживается, что новая песня имеет параметры, аналогичные другим песням, которые вам нравятся, добавляем ее в ваш плейлист.
-- Natural Language Processing (Echo Nest)
+- Natural Language Processing (**Echo Nest**)
 
 ### Стриминг треков
 
-**HLS** (HTTP Live Streaming) или **DASH** (Dynamic Adaptive Streaming over HTTP)
+**HLS** (**HTTP Live Streaming**) или **DASH** (**Dynamic Adaptive Streaming over HTTP**)
 
 ### Хранение треков
 
 Для хранения используются форматы :
-- **Ogg Vorbis** (96, 160, 320 kbps)
-- **AAC** (128, 256 kbps)
-- **HE-AACv2** (24kbps) 
-- **FLAC** или **WAV** (1411 kbps, частота дискретизации 44 100 Гц и глубина 16 бит)
+- **Ogg Vorbis** (`96`, `160`, `320` kbps)
+- **AAC** (`128`, `256` kbps)
+- **HE-AACv2** (`24`kbps) 
+- **FLAC** или **WAV** (`1411` kbps, частота дискретизации 44 100 Гц и глубина 16 бит)
+максимальный формат для загрузки из него будем конвертировать в остальные 
 
 ### Поиск
 
 Для поиска буду использовать **ElasticSearch**, встроенный анализатор текста и полнотекстовй поиска **Apache Lucene**
+таблица  `search`
 
 ### Модерация
 
-- Загрузка музыки производится через дестрибьюторов и музыкальные лейблы. Они занимаются отсеиванием нежелательного контента на площадке
+- Загрузка музыки производится через дестрибьюторов и музыкальные лейблы. Они занимаются отсеиванием нежелательного контента на площадке.
 
-- В качестве модерации будем использовать алгоритмы ML. Для нахождения, например, нецензурных фраз и навешивания тега ***"Explicit"***
+- В качестве модерации будем использовать алгоритмы **ML**. Для нахождения, например, нецензурных фраз и навешивания тега ***"Explicit"***
 
 ## 8. Технологии
 
@@ -643,10 +646,14 @@ playlist (
 | Google's CDN | CDN | Cокращение задержек при передаче данных и стриминга аудиофайлов |
 | Cassandra  | СУБД                        | Популярность, возможности кастомизации и оптимизации, надёжность, репликация      |
 GitLab	| Система контроля версий, CI/CD	| Удобство версионирования и командной разработки, возможность автоматизации сборки, деплоя, запуска тестов и пр. |
-| Kafka | Брокер сообщений | Легковесная магтабируемая очередь. Помогает настрить асинхронную обработку событий в системе |
+| Apache Kafka | Брокер сообщений | Легковесная магтабируемая очередь. Помогает настрить асинхронную обработку событий в системе |
 | Apache Storm | Recomendation | Real-time вычисления. Ассинхронность и эффективность |
 | HDFS | Хранилище ивентов | Позволяет хранить и меть быстрый доступ к не упроядоченным данным |
-| ElasticSearch | Поиск | Полнотекстовый поиск. Встроенные анализаторы (в том числе китайский, корейский, японский)
+| ElasticSearch | Поиск | Полнотекстовый поиск. Встроенные анализаторы (в том числе китайский, корейский, японский) |
+| Flink | Агрегация данных в пачках | Поддержание консистентности данных передаваемых через него. Может сливать несколько пайплайнов (потоков данных в один) |
+| Apache Storm | Обработка данных в рельном времени | Эфективная обработка даннх в пачках с поддержкой их косистентности |
+| ClickHouse | Аналитическая БД | Столбчатая БД для сохранения данных для аналитиков бизнес-кейсов, работы сервиса |
+    
 
 
 ## 9. Схема проекта
