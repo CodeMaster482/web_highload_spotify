@@ -354,7 +354,7 @@ erDiagram
         author_id uuid FK
         author_name text
         album_id uuid FK
-        album_of_track album
+        album_of_track text
         title text
         release_at timestamptz
         duration interval
@@ -519,6 +519,100 @@ erDiagram
 | author_statistic        | Clickhouse    |
 | album_statistic         | Clickhouse    |
 | search                  | ElasticSearch |
+
+### Размер данных
+
+**MAU** = `618` мил. Умножим на 2, что бы учесть увеличение кол-ва пользователей и данных
+**MAU_MAX** = `1236` мил.
+
+#### User
+
+```math
+16(uuid) + 50(email) + 50(username) + 256(password) + 8(gender) + 8(timestamptz) + 128(avatar_url) + 2(country) + 16*15(uuid) = 758[байт]
+
+758[байт] * 1236*10^6 = 873[ГБ]
+```
+
+#### User Session
+
+```math
+16(uuid) + 8(timestamp) + 4(ip) + 10(user_agent) + 16(user_id) + 16(session_id) = 70[байт]
+
+70[байт] * 1236*10^6 = 81[ГБ]
+```
+
+#### Song
+
+На сервисе храниться метаданных для 100 млн. песен
+
+В день добавляется около 60 тыс. песен
+
+```math
+16(uuid) + 16(author_id) + 30(author_name) + 16(album_id) + 30(album_of_track) + 30(title) + 8(timestamp) + 4(interval) + 3000(lyrics) + 128(url) + 8(timestamptz) + 8(timestamptz) = 3294[байт]
+
+3294[байт] * 100*10^6 = 307[ГБ]
+
+3294[байт] * 60*10^3 = 0.2[ГБ]
+```
+
+#### Playlist
+
+По данным, у Spotify около 4 млрд. плейлистов 
+
+```math
+16(uuid) + 16(user_id) + 30(title) + 128(image_url) + 32(interval) + 8(timestamptz) + 8(timestamptz) = 238[байт]
+
+238[байт] * 4*10^9 = 887[ГБ]
+```
+
+#### Album
+
+В среденем, по статистике, в 1 альбоме содержиться от 10 до 15 треков. Возьмем среднее значение 12 песен
+
+По данным, на Spotify содержиться около 5 млн. альбомов. Будем ориентриваться на эту цифру
+
+```math
+16(uuid) + 16(author_id) + 30(title) + 128(description) + 128(image_url) + 12*3294(songs) + 32(interval) + 8(timestamptz) + 8(timestamptz) + 8(timestamptz) = 39902[байт]
+
+39902[байт] * 5*10^6 = 186[ГБ]
+```
+
+#### Author
+
+По данным, на Spotify представленно около 11 млн. уникальных испольнителей
+
+```math
+16(uuid) + 30(name) + 256(description) + 64(plays) + 8(timestamptz) + 50*4(social_links) = 574[байт]
+
+574[байт] * 11*10^6 = 6[ГБ]
+```
+
+#### Search
+
+Таблица поиска содержит **key-value** пару c uuid и текстом
+
+- 100 млн. песен 
+- 11 млн. авторов
+- 5 млн. альбомов
+- 4 млрд. плейлистов
+
+```math
+30(song_name) + 3000(lyrics) + 16(song_id) = 3046[байт]
+
+30(author_name) + 16(author_id) = 46[байт]
+
+30(album_name) + 16 (album_id) = 46[байт]
+
+30(playlist_name) + 16 (playlist_id) = 46[байт]
+
+3046[байт] * 100*10^6 = 234[ГБ]
+
+46[байт] * 11*10^6 = 0.5[ГБ]
+
+46[байт] * 5*10^6 = 0.2[ГБ]
+
+46[байт] * 4*10^9 = 172[ГБ]
+```
 
 ### Популярные запросы
 
