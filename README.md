@@ -432,12 +432,12 @@ erDiagram
     }
 
     album_tag {
-        album_id uuid PK,UK
+        album_id uuid PK
         name text
     }
 
     author {
-        id uuid PK
+        id uuid PK, UK
         name text
         description text
         plays int
@@ -585,6 +585,51 @@ erDiagram
 16(uuid) + 30(name) + 256(description) + 64(plays) + 8(timestamptz) + 50*4(social_links) = 574[байт]
 
 574[байт] * 11*10^6 = 6[ГБ]
+```
+
+#### Tags tables
+
+В схеме указано, что есть 3 таблицы с тегами
+
+Если учесть что на описание достаточно 20 тегов
+
+```math
+16(uuid) + 32(name) = 48[байт]
+
+// для песен
+48[байт] * 100*10^6 = 4.5[ГБ]
+
+// для альбомов
+48[байт] * 5*10^6 = 0.2[ГБ]
+
+// для авторов
+48[байт] * 11*10^6 = 0.5[ГБ]
+```
+
+#### Statistic
+
+Для песен
+
+```math
+16(uuid) + 8(plays_count) + 8(add_to_pl) + 8(shares_count) + 8(skip_count) + 8(avg_list_time) = 56[байт]
+
+56[байт] * 100*10^6 = 5.2[ГБ]
+```
+
+Для альбомов
+
+```math
+16(album_id) + 8(plays_count) + 8(likes_count) + 8(shares_count) = 40[байт]
+
+40[байт] * 5*10^6 = 0.2[ГБ]
+```
+
+Для авторов
+
+```math
+16(author_id) + 8(listners_per_mounth) + 8(avg_listeners_per_day) + 4*16(in_playlists) = 96[байт]
+
+96[байт] * 11*10^6 = 1[ГБ]
 ```
 
 #### Search
