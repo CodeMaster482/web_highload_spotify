@@ -11,7 +11,9 @@
 7. [Алгоритмы](/README.md#7-алгоритмы)
 8. [Технологии](/README.md#8-технологии)
 9. [Схема Проекта](/README.md#9-схема-проекта)
-11. [Источники](/README.md#источники)
+10. [Обеспечение надежности](./README.md#10-обеспечение-надежности)
+11. [Расчет ресурсов](./README.md#11-рассчет-ресурсов)
+12. [Источники](/README.md#источники)
 
 ## 1. Тема и целевая аудитория
 
@@ -130,10 +132,16 @@ Cр.размер текста песени: ```3000 символов``` (__UTF-8
 
 #### Дневной трафик
 ```
-DAU * avg_listening_time * (share_of_users * bitrate[kbit/s]) = (272*10^6) * (95 * 60)[сек] * (0.38 * 320 + 0.62 * 160)/8[KB/сек] = 42,791,040,000,000 КБ/cут = 42791 TB/сут
+DAU * avg_listening_time * (share_of_users * bitrate[kbit/s]) = (272*10^6) * (95 * 60)[сек] * (0.38 * 320 + 0.62 * 160)/8[KB/сек] = 42,791,040,000,000 КБ/cут = 42791 TB/сут = 0.5 TB/сек
 ```
 
-Загрузка аудиофайла
+Возмем пиковую нагрузку в два раза больше DAU
+
+```
+(DAU * per_day / day) * k_peak * song_stram = (272*10^6 * 95 * 60 / 24*3600) * 2 * (0.38 * 320 + 0.62 * 160)/8 = 7.4 Тбит/сек = 1 ТБ/сек
+```
+
+#### Загрузка аудиофайла
 
 ```
 new_songs_per_day * song_size / day = (60*10^3) * (0.6 + 2.3 + 3.1 + 3.8 + 6.2 + 7.7) / (24 * 3600) * 8 = 80 Мбит/с
@@ -319,63 +327,68 @@ author: CodeMaster482
 ---
 erDiagram
     user_session {
-        id uuid PK,UK
-        expires timestamp
-        ip inet
-        user_agent text
-        client_id uuid FK
-        session_id uuid
+        id          uuid        PK,UK
+        expires     timestamp
+        ip          inet
+        user_agent  text
+        client_id   uuid        FK
+        session_id  uuid
     }
 
     user {
-        id uuid PK,UK
-        email text UK
-        username text
-        password text
-        gender text
-        subscription timestamptz
-        avatar_url text
-        country varchar(2)
-        subscribed_to uuid[]
+        id                  uuid        PK,UK
+        email               text        UK
+        username            text
+        password            text
+        gender              text
+        subscription        timestamptz
+        avatar_url          text
+        country             varchar(2)
+        subscribed_to       uuid[]
     }
 
     user_history {
-        id uuid PK,UK
-        user_id uuid FK
-        playlist_id uuid FK
-        playlist_image_url text
-        songs song[]
-        listned_time interval[]
-        date_played timestamptz
+        id                  uuid PK,UK
+        user_id             uuid FK
+        song_id             uuid FK
+        song_image_url      text
+        listned_time        interval[]
+        date_played         timestamptz
     }
 
     song {
-        id uuid PK,UK
-        author_id uuid FK
-        author_name text
-        album_id uuid FK
-        album_of_track text
-        title text
-        release_at timestamptz
-        duration interval
-        lyrics text
-        stream_url_xbit text FK
-        created_at timestamptz
-        update_at timestamptz
+        id              uuid        PK,UK
+        author_id       uuid        FK
+        author_name     text
+        album_id        uuid        FK
+        album_of_track  text
+        title           text
+        release_at      timestamptz
+        duration        interval
+        lyrics          text
+        stream_url_xbit text        FK
+        created_at      timestamptz
+        update_at       timestamptz
+    }
+
+    song_search {
+        song_id uuid FK
+        name    text
+        lyrics  text
     }
 
     song_tag {
         song_id uuid PK,UK
-        name text
+        name    text
     }
 
     song_statistics {
-        song_id uuid FK
-        plays_count int
-        add_to_playlist_count int
-        shares_count int
-        skip_count int
-        avg_listen_time interval
+        song_id                 uuid       FK
+        plays_count             int
+        add_to_playlist_count   int
+        shares_count            int
+        skip_count              int
+        avg_listen_time         interval
     }
 
     song_stream {
@@ -390,78 +403,86 @@ erDiagram
     }
 
     playlist {
-        id uuid PK,UK
-        user_id uuid FK
-        title text
-        image_url text
-        duration interval
-        created_at timestamptz
-        updated_at timestamptz
+        id          uuid        PK,UK
+        user_id     uuid        FK
+        title       text
+        image_url   text
+        duration    interval
+        created_at  timestamptz
+        updated_at  timestamptz
+    }
+
+    playlist_search {
+        playlist_id   uuid FK
+        playlist_name text
     }
 
     playlist_song {
-        id uuid PK,UK
-        song_id uuid FK
+        id          uuid PK,UK
+        song_id     uuid FK
         playlist_id uuid FK
     }
 
     recommendation_playlist {
-        id uuid PK
-        playlist_id uuid FK
-        simular uuid[] FK
+        id          uuid    PK
+        playlist_id uuid    FK
+        simular     uuid[]  FK
     }
 
     album {
-        id uuid PK,UK
-        author_id uuid FK
-        title text
+        id          uuid PK,UK
+        author_id   uuid FK
+        title       text
         description text
-        image_url text
-        songs song[]
-        duration interval
-        release_at timestamptz
-        created_at timestamptz
-        update_at timestamptz
+        image_url   text
+        songs       song[]
+        duration    interval
+        release_at  timestamptz
+        created_at  timestamptz
+        update_at   timestamptz
+    }
+
+    album_search {
+        album_id   uuid FK
+        album_name text
     }
 
     album_statistic {
-        album_id uuid FK
-        plays_count int
-        likes_count int
-        shares_count int
+        album_id        uuid FK
+        plays_count     int
+        likes_count     int
+        shares_count    int
     }
 
     album_tag {
-        album_id uuid PK
-        name text
+        album_id    uuid PK
+        name        text
     }
 
     author {
-        id uuid PK, UK
-        name text
+        id          uuid PK, UK
+        name        text
         description text
-        plays int
-        birth_date timestamptz
-        links srtring[]
+        plays       int
+        birth_date  timestamptz
+        links       srtring[]
+    }
+
+    author_search {
+        author_id   uuid FK
+        author_name text
     }
 
     author_tag {
         author_id uuid PK,UK
-        name text
+        name      text
     }
 
     author_statistic {
-        author_id uuid PK,UK
-        listners_per_mounth int
+        author_id             uuid PK,UK
+        listners_per_mounth   int
         avg_listeners_per_day int
-        in_playlists uuid[]
-    }
-
-    search {
-        song_name text
-        song_lyrics text
-        artist_name text
-        album_name text
+        in_playlists          uuid[]
     }
 
     user_session ||--o{ user : has
@@ -471,6 +492,10 @@ erDiagram
     song ||--|| song_statistics : has
     author ||--o{ album : has
     song }o--|| author : has
+    song ||--|| song_search : search
+    playlist ||--|| playlist_search : search
+    album ||--|| album_search : search
+    author ||--|| author_search : search
     recommendation_playlist ||--|| playlist : has
     playlist ||--o{ recommendation_playlist : has
     song_tag }o--|| song : has
@@ -479,7 +504,7 @@ erDiagram
     author_tag }o--|| author : has
     author_statistic ||--||  author : stats
     user_history }o--|| user : have
-    user_history ||--o{ playlist : have
+    user_history ||--o{ song : have
     song_stream ||--|| song : has
     song ||--|| album : in
 ```
@@ -500,7 +525,7 @@ erDiagram
 - Для хранения обложек и песен в формате **ogg** буду использовать Google file System.
 Удобное, быстрое, горизонтально рассширемое решение, упростит использование **CDN** 
 
-- В качестве поискового движка будем использовать ElasticSearch. Как удобное решение с полнотекстчовым поиском.
+- В качестве поискового движка будем использовать **ElasticSearch**. Как удобное решение с полнотекстчовым поиском основаным на Apache Lucene.
 
 | Table                   | Database      |
 |-------------------------|---------------|
@@ -643,6 +668,9 @@ erDiagram
 
 ```math
 30(song_name) + 3000(lyrics) + 16(song_id) = 3046[байт]
+
+// Добавление 60 тыс. Песен в день Рост Хранилища
+3046[байт] * 60*10^3 = 0.2 [ГБ]
 
 30(author_name) + 16(author_id) = 46[байт]
 
@@ -838,6 +866,138 @@ GitLab	| Система контроля версий, CI/CD	| Удобство 
 - Логирование (Записанные логи могут использоваться для поиска и анализа ошибок, отладки работы приложения, сервисов)
 - Мониторинг (отслеживает состояние системы или приложения в реальном времени. Измерение производительности, использования ресурсов, наличия ошибок)
 
+## 11. Рассчет ресурсов
+
+### Авторизация
+
+RPS на авторизацию состовляет **715 RPS**, где используется **hash**-функция **bycrypt** (при тестировании запроса с импользованием **bcrypt** + поход в redis)
+
+| Сервис       | RPS | CPU | RAM  |
+|--------------|-----|-----|------|
+| login/signUp | 715 | 44  |  22  |
+
+### Аунтификация
+
+Основные запросы на сервис Аунтификации будут осущетвляться по сервисам Информациия о своем плейлисте, Добовление трека в плейлист, Создание плейлиста, Загрузка аудиофайла, Рекомендации.
+
+Примерный **RPS** будет 15740 + 9445 + 715 + 1 + 15740 + 15740 = 57381
+
+| Сервис       | RPS   | CPU | RAM  |
+|--------------|-------|-----|------|
+| checkAuth    | 57381 | 57  |  29  |
+
+### CDN
+
+Для хранения аудиофайлов на **CDN** серверах. Где ближайший будет выбираться **Latancy-based**
+
+- Вирджиния (США)
+- Сан-Франциско (США)
+- Лондон (Великобритания)
+- Стокгольм (Швеция)
+- Москва (Россия)
+- Бразилиа (Бразилия)
+- Мехико (Мексика)
+- Токио (Япония)
+- Дели (Индия)
+- Сидней (Австралия)
+
+#### Конфигурация
+
+- `2260` ТБ аудиофайлов
+- Пиковый трафик `7.4 Тбит/c`
+- 7.4 Тбит/сек * 1000/100 Гбит/сек = 74 серверов
+- Конфигурация **2x6338/16x32GB/24xNVMe16T/2x100Gb/s**
+
+Для создания запаса по памяти, тк объем хранилища аудиофайлов растет на `1 ТБ/сут`, возмём `10` серверов для запаса. Также для надежности для каждого сервира будем содержать его реплику
+
+### Search
+
+Согласно рекомандациям[^9] для **Elastic Search** каждая нода имеет соотношение
+2 ядра к 16 ГБ RAM
+Elastic рекомендует пользоваться следующей логикой: «горячие» → 1:30 (30Гб дискового пространства на каждый гигабайт памяти), «тёплые» → 1:100, «холодные» → 1:500.
+
+- 100 млн. песен + 60 тыс./год
+- 4 млрд. плейлистов
+- 5 млн. альбомов
+- 11 млн. авторов
+
+- Общий вес всех таблиц поиска будет 234 + 0.5 + 0.2 + 172 = 406 [ГБ]
+- Размер увеличивается на 0.2[ГБ] в день
+- для учета роста кол-ва пользователей, плейлистов, песен, альбомов увеличим объем таблиц в 2 раза == 812[ГБ]
+- Elastic сжимает данные на 20%-30% => 609[ГБ]
+- Пусть 40% данных будет "горячими", тогда ~ 244[ГБ] => "теплых" ~ 365[ГБ]
+
+#### Data Node
+
+- "Горячие": Кол-во 1 узел. Хранилище по 244[ГБ].
+    - **1x6338/8x16GB/1xNVMe2T/2x100Gb/s**
+- "Теплые": Кол-во 1 узел. Хранилище по 365[ГБ].
+    - **1x6338/8x16GB/1xNVMe2T/2x100Gb/s**
+
+#### Master Node
+
+- Кол-во 1.
+    - **1x6338/4x16GB/1xNVMe2T/1x100Gb/s**
+
+### Cassandra + ClickHouse
+
+- Таблица пользователей ~ 873[ГБ]
+- Таблица песен ~ 307[ГБ] с приростом в год 0.2[ГБ]
+- Таблица плейлистов ~ 887[ГБ]
+- Таблицы альбомов ~ 186[ГБ]
+
+#### User
+
+Возьмем для рассчета 5 шардов ~ 174[ГБ] на шард, с учетом индексов и кэширования
+
+| CPU | RAM  | Storage   |
+|-----|------|-----------|
+| 32  | 4x32 | NVMe512Gb |
+
+#### Song + tags + statistic
+
+Возьмем для рассчета 5 шардов ~ 62[ГБ] на шард, с учетом индексов и кэширования
+
+| CPU | RAM  | Storage     |
+|-----|------|-------------|
+| 32  | 4x32 | 2xNVMe128Gb |
+
+#### Playlist
+
+Возьмем для рассчета 5 шардов ~ 177.4[ГБ] на шард, с учетом индексов и кэширования
+
+| CPU | RAM  | Storage     |
+|-----|------|-------------|
+| 32  | 4x32 | 2xNVMe512Gb |
+
+
+#### Author + Album + tags + statistic
+
+Возьмем для рассчета 5 шардов ~ 38.4[ГБ] на шард, с учетом индексов и кэширования
+
+| CPU | RAM  | Storage     |
+|-----|------|-------------|
+| 32  | 2x32 | 2xNVMe128Gb |
+
+### S3
+
+Все аудио файлы 2260[ТБ], рост хранилища аудифайлов составляет 0.857[ТБ/сут]
+
+- 2260/(24*16) = 6 серверов
+- Кофигурация: **2x6338/16x32GB/24xNVMe16T/2x100Gb/s**
+
+### Envoy
+
+Исходя из пиковой нагрузки 7.4 * 1024/10/100 ~ 8 шт. на регион
+
+23825 RPS per Регион примерно нужно 238 ядер на 8 шт
+
+238/8 ~ 32 ядра
+
+| CPU | RAM    | Net       |
+|-----|--------|-----------|
+| 32  | 4x32Gb | 100Gbit/s |
+
 ## Источники
 
 [^1]: [Music subscriber market shares 2022](https://midiaresearch.com/blog/music-subscriber-market-shares-2022)
@@ -855,3 +1015,7 @@ GitLab	| Система контроля версий, CI/CD	| Удобство 
 [^7]: [Spotify About Company](https://newsroom.spotify.com/company-info/)
 
 [^8]: [Avarge song text](https://www.researchgate.net/publication/363735501_Song_authorship_attribution_a_lyrics_and_rhyme_based_approach)
+
+[^9]: [Elastic bare-metal requriments](https://opster.com/guides/elasticsearch/capacity-planning/elasticsearch-hardware-requirements/#:~:text=As%20a%20general%20guideline%2C%20it,or%20more%20RAM%20per%20node)
+
+[^10]: [Elastic node destribution](https://habr.com/ru/companies/galssoftware/articles/470640/)
