@@ -827,9 +827,7 @@ GitLab	| Система контроля версий, CI/CD	| Удобство 
 
 [Актуальная схема](https://drive.google.com/file/d/1zhMn8_Igj0ZjtwY2olcLpzVfXxT5IkHn/view?usp=sharing)
 
-![alt text](image-5.png)
-![alt text](image-2.png)
-![alt text](image-4.png)
+![Scheme](./System_disign_Spotify.svg)
 
 ## 10. Обеспечение надежности
 
@@ -862,7 +860,7 @@ GitLab	| Система контроля версий, CI/CD	| Удобство 
 Примеры: 
 - При отказе Elastic Search Идем в базу ищем
 Просто по индексам SAI
-- При отказе Recomndation выдаем дефолтные ids дефолтных пре созданных плей листов
+- При отказе Recomndation выдаем дефолтные ids дефолтных пре-созданных плей листов и треки из истории прослушиваний пользователя
 
 
 ### Observability
