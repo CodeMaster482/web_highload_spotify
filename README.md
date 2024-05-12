@@ -830,7 +830,7 @@ GitLab	| Система контроля версий, CI/CD	| Удобство 
 
 [Актуальная схема](https://drive.google.com/file/d/1zhMn8_Igj0ZjtwY2olcLpzVfXxT5IkHn/view?usp=sharing)
 
-![Scheme](./Копия%20Scheme_SpotifyPravkiLastMB.drawio.svg)
+![Scheme](./Копия%20Scheme_SpotifyPravkiLastMB.drawio(1).svg)
 
 ## 10. Обеспечение надежности
 
